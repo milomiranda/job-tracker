@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Job Tracker</title>
+<style>
+:root{--bg:#f4f4f4;--card:#fff;--soft:#fafafa;--text:#111;--muted:#777;--bd:#e2e2e2;--ink:#111;--onink:#fff;
+--s1:#ececec;--f1:#555;--s2:#dcdcdc;--f2:#222;--s3:#c4c4c4;--f3:#111;--s4:#8a8a8a;--f4:#fff;--s5:#333;--f5:#fff;--s6:#000;--f6:#fff;--s7:transparent;--f7:#999;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0e0e0e;--card:#181818;--soft:#1f1f1f;--text:#f2f2f2;--muted:#8c8c8c;--bd:#2c2c2c;--ink:#f2f2f2;--onink:#111;
+--s1:#2a2a2a;--f1:#aaa;--s2:#3a3a3a;--f2:#ddd;--s3:#555;--f3:#fff;--s4:#888;--f4:#000;--s5:#ccc;--f5:#000;--s6:#fff;--f6:#000;--f7:#777}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0e0e0e;--card:#181818;--soft:#1f1f1f;--text:#f2f2f2;--muted:#8c8c8c;--bd:#2c2c2c;--ink:#f2f2f2;--onink:#111;
+--s1:#2a2a2a;--f1:#aaa;--s2:#3a3a3a;--f2:#ddd;--s3:#555;--f3:#fff;--s4:#888;--f4:#000;--s5:#ccc;--f5:#000;--s6:#fff;--f6:#000;--f7:#777}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Arial,Helvetica,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--bd);background:var(--card);border-radius:10px;padding:9px 14px;font-weight:700}
+button.pri{background:var(--ink);color:var(--onink);border-color:var(--ink)}
+button.dng{color:var(--muted)}
+.top{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:var(--bg);border-bottom:1px solid var(--bd)}
+.top h1{margin:0;font-size:18px;font-weight:900}.top div{display:flex;gap:8px}
+main{max-width:820px;margin:0 auto;padding:16px 20px 60px}
+input,select,textarea{width:100%;padding:9px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--ink);outline-offset:1px}
+#pills{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 8px}
+.pill{padding:5px 12px;border-radius:99px;font-size:12px;font-weight:700;color:var(--muted)}
+.pill.on{background:var(--ink);color:var(--onink);border-color:var(--ink)}
+.chk{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:12px}.chk input{width:auto}
+.row{display:flex;gap:12px;align-items:center;background:var(--card);border:1px solid var(--bd);border-left:5px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.row:hover{background:var(--soft)}
+.row.fresh{border-left-color:#d0d0d0}.row.warm{border-left-color:#888}.row.stale{border-left-color:var(--ink)}
+.rk{width:22px;color:var(--muted);font-size:12px;font-weight:700}.mid{flex:1;min-width:0}
+.nm{font-weight:900;font-size:15px}.tx{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.chip{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.03em;border:1px solid transparent;margin-top:4px}
+.s1{background:var(--s1);color:var(--f1)}.s2{background:var(--s2);color:var(--f2)}.s3{background:var(--s3);color:var(--f3)}.s4{background:var(--s4);color:var(--f4)}.s5{background:var(--s5);color:var(--f5)}.s6{background:var(--s6);color:var(--f6)}.s7{background:var(--s7);color:var(--f7);border-color:var(--bd)}
+.days{font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--s1);color:var(--f1);white-space:nowrap}
+.stale .days{background:var(--ink);color:var(--onink)}.bd{font-size:11px;color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:50px 0}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 14px;z-index:10}
+.ov[hidden]{display:none}
+.modal{background:var(--card);border-radius:16px;padding:20px;width:100%;max-width:580px}
+.modal h2{margin:0 0 4px;font-size:20px;font-weight:900}.sub{color:var(--muted);font-size:12px;margin-bottom:12px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g>div,.fld{margin-bottom:8px}
+@media(max-width:520px){.g{grid-template-columns:1fr}}
+label,.lb{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 4px}
+.blk{background:var(--soft);border:1px solid var(--bd);border-radius:12px;padding:12px}.blk input{margin-bottom:6px}
+.act{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.h{border-top:1px solid var(--bd);padding:9px 0;font-size:13px}.h b{font-size:11px;color:var(--muted);display:block;text-transform:uppercase}
+.h button{float:right;padding:2px 8px;font-size:11px}
+.ln{display:flex;gap:6px}.ln button{padding:6px 10px}
+</style>
+</head>
+<body>
+<div class="top"><h1>Job Tracker</h1><div><button id="th" title="Theme">◐</button><button class="pri" id="add">+ New company</button></div></div>
+<main>
+<input id="q" placeholder="Search companies, contacts…">
+<div id="pills"></div>
+<label class="chk" style="text-transform:none;letter-spacing:0;font-weight:400"><input type="checkbox" id="hide"> Hide inactive (60+ days)</label>
+<div id="list"></div>
+<div class="bd" style="margin-top:20px">Your data is saved in this browser only.</div>
+</main>
+<div class="ov" id="ov" hidden></div>
+<script>
+const S=["Lead enrichment","Ready for outreach","Applied","Waiting for response","Interview set / Prep","Offer","Not interested / Rejected"];
+const CH=["Email","LinkedIn","WhatsApp","Call","In person","Job portal","Other"];
+const CF=[["name","Contact name"],["phone","Phone"],["email","E-mail"],["linkedin","LinkedIn"]];
+const $=s=>document.querySelector(s);
+const e=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let L=[],flt="all";
+try{L=JSON.parse(localStorage.getItem("jt1")||"[]")}catch(x){}
+const save=()=>{try{localStorage.setItem("jt1",JSON.stringify(L))}catch(x){}};
+const cls=s=>"s"+(S.indexOf(s)+1||1);
+const fd=d=>new Date(d+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+const last=l=>(l.log||[]).slice().sort((a,b)=>b.d.localeCompare(a.d))[0];
+const days=l=>{const t=last(l);return t?Math.max(0,Math.floor((Date.now()-new Date(t.d+"T00:00:00"))/864e5)):null};
+const today=()=>new Date().toISOString().slice(0,10);
+const blank=()=>({id:Date.now().toString(36),company:"",status:S[0],action:"",website:"",c1:{},c2:{},log:[]});
+
+function render(){
+  const q=$("#q").value.toLowerCase(),hide=$("#hide").checked,cnt={};
+  L.forEach(l=>cnt[l.status]=(cnt[l.status]||0)+1);
+  $("#pills").innerHTML=`<button class="pill ${flt=="all"?"on":""}" data-s="all">All (${L.length})</button>`+S.filter(s=>cnt[s]).map(s=>`<button class="pill ${flt==s?"on":""}" data-s="${e(s)}">${e(s)} (${cnt[s]})</button>`).join("");
+  $("#pills").querySelectorAll("button").forEach(b=>b.onclick=()=>{flt=b.dataset.s;render()});
+  const v=L.filter(l=>(flt=="all"||l.status==flt)&&(!hide||(days(l)??0)<60)&&(!q||JSON.stringify([l.company,l.action,l.c1,l.c2]).toLowerCase().includes(q)))
+    .sort((a,b)=>(last(b)?.d||"").localeCompare(last(a)?.d||""));
+  $("#list").innerHTML=v.length?v.map((l,i)=>{const t=last(l),n=days(l),u=n==null?"":n>=21?"stale":n>=8?"warm":"fresh";
+    return `<div class="row ${u}" data-id="${l.id}"><div class="rk">${i+1}</div><div class="mid"><div class="nm">${e(l.company||"(no name)")}</div><span class="chip ${cls(l.status)}">${e(l.status)}</span><div class="tx">${t?e(fd(t.d)+" · "+t.ch+" · "+t.msg):"No touchpoint logged"}</div></div><div style="text-align:right"><div class="days">${n==null?"–":n+(n==1?" day":" days")}</div>${l.log.length?`<div class="bd" style="margin-top:4px">💬 ${l.log.length}</div>`:""}</div></div>`}).join(""):`<div class="empty">${L.length?"No matches.":"No companies yet. Click “+ New company” to add your first one."}</div>`;
+  $("#list").querySelectorAll(".row").forEach(r=>r.onclick=()=>detail(r.dataset.id));
+}
+const open=h=>{$("#ov").innerHTML=`<div class="modal">${h}</div>`;$("#ov").hidden=false};
+const close=()=>{$("#ov").hidden=true;render()};
+$("#ov").onclick=ev=>{if(ev.target.id=="ov")close()};
+const sel=(id,arr,v)=>`<select id="${id}">${arr.map(o=>`<option ${o==v?"selected":""}>${e(o)}</option>`).join("")}</select>`;
+const cblk=(k,t,c)=>`<div class="blk"><div class="lb">${t}</div>${CF.map(([f,p])=>`<input data-p="${k}.${f}" placeholder="${p}" value="${e(c[f])}">`).join("")}</div>`;
+
+function detail(id){
+  const l=L.find(x=>x.id==id);if(!l)return;
+  open(`<h2>${e(l.company)}</h2><div class="sub">${l.log.length} touchpoint${l.log.length==1?"":"s"} logged</div>
+  <div class="fld"><label>Status</label>${sel("st",S,l.status)}</div>
+  <div class="fld"><label>Action (next step)</label><input data-p="action" value="${e(l.action)}"></div>
+  <div class="fld"><label>Website</label><div class="ln"><input data-p="website" value="${e(l.website)}"><button data-o="website">↗</button></div></div>
+  <div class="g">${cblk("c1","Contact 1",l.c1)}${cblk("c2","Contact 2",l.c2)}</div>
+  <div class="act" style="justify-content:stretch"><button class="pri" style="flex:1" id="lg">+ Log touchpoint</button><button id="ed">Edit</button><button class="dng" id="dl">Delete</button></div>
+  <div style="margin-top:16px"><div class="lb">History</div>${l.log.length?l.log.slice().sort((a,b)=>b.d.localeCompare(a.d)).map(t=>`<div class="h"><button data-x="${t.k}">Delete</button><b>${e(fd(t.d))} · ${e(t.ch)}</b>${e(t.msg)}</div>`).join(""):'<div class="bd">No history yet.</div>'}</div>
+  <div class="act"><button id="cl">Close</button></div>`);
+  const m=$(".modal");
+  m.querySelectorAll("[data-p]").forEach(i=>i.onchange=()=>{const p=i.dataset.p.split(".");p.length>1?l[p[0]][p[1]]=i.value:l[p[0]]=i.value;save()});
+  $("#st").onchange=ev=>{l.status=ev.target.value;save()};
+  m.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>{let u=l[b.dataset.o];if(u)window.open(/^https?:/.test(u)?u:"https://"+u,"_blank","noopener")});
+  m.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{if(confirm("Delete this touchpoint?")){l.log=l.log.filter(t=>t.k!=b.dataset.x);save();detail(id)}});
+  $("#lg").onclick=()=>logf(id);$("#ed").onclick=()=>form(id);$("#cl").onclick=close;
+  $("#dl").onclick=()=>{if(confirm("Delete this company?")){L=L.filter(x=>x.id!=id);save();close()}};
+}
+function logf(id){
+  open(`<h2>Log touchpoint</h2><div class="fld"><label>Date</label><input type="date" id="td" value="${today()}"></div><div class="fld"><label>Channel</label>${sel("tc",CH,CH[0])}</div><div class="fld"><label>Message</label><textarea id="tm" rows="4" placeholder="What was discussed…"></textarea></div><div class="act"><button id="cn">Cancel</button><button class="pri" id="sv">Save</button></div>`);
+  $("#cn").onclick=()=>detail(id);
+  $("#sv").onclick=()=>{if(!$("#td").value)return alert("Enter a date");const l=L.find(x=>x.id==id);l.log.push({k:Date.now().toString(36),d:$("#td").value,ch:$("#tc").value,msg:$("#tm").value.trim()});save();detail(id)};
+}
+function form(id){
+  const n=!id,l=n?blank():L.find(x=>x.id==id);
+  open(`<h2>${n?"New company":"Edit company"}</h2><div class="sub">Company</div>
+  <div class="fld"><label>Company</label><input id="f_company" value="${e(l.company)}"></div>
+  <div class="g"><div><label>Status</label>${sel("f_status",S,l.status)}</div><div><label>Website</label><input id="f_website" value="${e(l.website)}"></div></div>
+  <div class="fld"><label>Action (next step)</label><input id="f_action" value="${e(l.action)}"></div>
+  <div class="g">${cblk("c1","Contact 1",l.c1)}${cblk("c2","Contact 2",l.c2)}</div>
+  <div class="act"><button id="cn">Cancel</button><button class="pri" id="sv">Save</button></div>`);
+  $("#cn").onclick=()=>n?close():detail(id);
+  $("#sv").onclick=()=>{
+    if(!$("#f_company").value.trim())return alert("Enter a company name");
+    l.company=$("#f_company").value.trim();l.status=$("#f_status").value;l.website=$("#f_website").value;l.action=$("#f_action").value;
+    document.querySelectorAll(".modal [data-p]").forEach(i=>{const[k,f]=i.dataset.p.split(".");l[k][f]=i.value});
+    if(n)L.push(l);save();n?close():detail(id)};
+}
+$("#add").onclick=()=>form();
+$("#q").oninput=render;$("#hide").onchange=render;
+$("#th").onclick=()=>{const r=document.documentElement,d=getComputedStyle(r).colorScheme.includes("dark");r.dataset.theme=d?"light":"dark"};
+render();
+</script>
+</body>
+</html>
