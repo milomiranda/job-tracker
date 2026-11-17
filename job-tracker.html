@@ -53,13 +53,13 @@ label,.lb{display:block;font-size:11px;font-weight:700;text-transform:uppercase;
 </style>
 </head>
 <body>
-<div class="top"><h1>Job Tracker</h1><div><button id="th" title="Theme">◐</button><button class="pri" id="add">+ New company</button></div></div>
+<div class="top"><h1>Job Tracker</h1><div><span class="bd" id="sy" style="align-self:center"></span><button id="cfg" title="Connect Google Sheet">⚙ Connect sheet</button><button id="th" title="Theme">◐</button><button class="pri" id="add">+ New company</button></div></div>
 <main>
 <input id="q" placeholder="Search companies, contacts…">
 <div id="pills"></div>
 <label class="chk" style="text-transform:none;letter-spacing:0;font-weight:400"><input type="checkbox" id="hide"> Hide inactive (60+ days)</label>
 <div id="list"></div>
-<div class="bd" style="margin-top:20px">Your data is saved in this browser only.</div>
+<div class="bd" style="margin-top:20px">Synced with your Google Sheet when connected (⚙); otherwise saved in this browser only.</div>
 </main>
 <div class="ov" id="ov" hidden></div>
 <script>
@@ -70,7 +70,24 @@ const $=s=>document.querySelector(s);
 const e=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let L=[],flt="all";
 try{L=JSON.parse(localStorage.getItem("jt1")||"[]")}catch(x){}
-const save=()=>{try{localStorage.setItem("jt1",JSON.stringify(L))}catch(x){}};
+const loc=()=>{try{localStorage.setItem("jt1",JSON.stringify(L))}catch(x){}};
+const save=()=>{loc();push()};
+let CFG={},ok=false,tm;try{CFG=JSON.parse(localStorage.getItem("jt_cfg")||"{}")}catch(x){}
+const setSt=t=>{$("#sy").textContent=t};
+const MON="jan feb mar apr may jun jul aug sep oct nov dec".split(" ");
+async function api(action,data){const r=await fetch(CFG.url,{method:"POST",body:JSON.stringify({token:CFG.token,action,data})});const j=await r.json();if(j.error)throw new Error(j.error);return j}
+const toRow=l=>{const g=l.log.slice().sort((a,b)=>b.d.localeCompare(a.d)),t=g[0];
+ return [l.company,l.status,l.action,l.website,l.c1.name,l.c1.phone,l.c1.email,l.c1.linkedin,l.c2.name,l.c2.phone,l.c2.email,l.c2.linkedin,
+ g.map(x=>fd(x.d)+"/"+x.ch+"/Message: "+x.msg.replace(/ - /g," – ")).join(" - "),t?t.d:"",t?t.ch:""].map(v=>v??"")};
+const fromRow=(r,i)=>{const dt=r[13]||"";
+ const log=(r[12]||"").split(" - ").map(x=>x.trim()).filter(Boolean).map((x,k)=>{
+  const m=x.match(/^(\d{1,2}) (\w+)\.? (\d{4})\/([^/]+)\/Message: ([\s\S]*)$/),mo=m?MON.indexOf(m[2].slice(0,3).toLowerCase()):-1;
+  return mo>=0?{k:"s"+i+"_"+k,d:`${m[3]}-${String(mo+1).padStart(2,"0")}-${m[1].padStart(2,"0")}`,ch:m[4],msg:m[5]}:{k:"s"+i+"_"+k,d:dt||today(),ch:r[14]||"Other",msg:x}});
+ return{id:"r"+i+Date.now().toString(36),company:r[0],status:r[1]||S[0],action:r[2],website:r[3],c1:{name:r[4],phone:r[5],email:r[6],linkedin:r[7]},c2:{name:r[8],phone:r[9],email:r[10],linkedin:r[11]},log}};
+function push(){if(!CFG.url||!ok)return;clearTimeout(tm);setSt("Saving…");
+ tm=setTimeout(async()=>{try{await api("replace",{rows:L.filter(l=>l.company).map(toRow)});setSt("Saved to sheet")}catch(x){setSt("Sync error")}},700)}
+async function pull(){if(!CFG.url)return setSt("Local only");setSt("Loading…");
+ try{const j=await api("list");L=j.rows.map(fromRow);ok=true;loc();render();setSt("Synced")}catch(x){setSt("Sync error – edits not sent")}}
 const cls=s=>"s"+(S.indexOf(s)+1||1);
 const fd=d=>new Date(d+"T00:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
 const last=l=>(l.log||[]).slice().sort((a,b)=>b.d.localeCompare(a.d))[0];
@@ -134,9 +151,11 @@ function form(id){
     if(n)L.push(l);save();n?close():detail(id)};
 }
 $("#add").onclick=()=>form();
+$("#cfg").onclick=()=>{const u=prompt("Apps Script web app URL",CFG.url||"");if(u===null)return;const t=prompt("Token",CFG.token||"");if(t===null)return;
+ CFG={url:u.trim(),token:t.trim()};try{localStorage.setItem("jt_cfg",JSON.stringify(CFG))}catch(x){}pull()};
 $("#q").oninput=render;$("#hide").onchange=render;
 $("#th").onclick=()=>{const r=document.documentElement,d=getComputedStyle(r).colorScheme.includes("dark");r.dataset.theme=d?"light":"dark"};
-render();
+render();pull();
 </script>
 </body>
 </html>
