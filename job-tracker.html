@@ -17,8 +17,10 @@ button.pri{background:var(--ink);color:var(--onink);border-color:var(--ink)}
 button.s{padding:2px 8px;font-size:11px;float:right;color:var(--muted)}
 .top{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:var(--bg);border-bottom:1px solid var(--bd)}
 .top h1{margin:0;font-size:18px;font-weight:900}.top div{display:flex;gap:8px}
-.wrap{display:grid;grid-template-columns:300px 1fr;gap:16px;max-width:1120px;margin:0 auto;padding:16px 20px 60px;align-items:start}
-@media(max-width:820px){.wrap{grid-template-columns:1fr}}
+.wrap{display:grid;grid-template-columns:1fr minmax(0,820px) 1fr;gap:16px;padding:16px 20px 60px;align-items:start}
+.wrap>.side{grid-column:1;justify-self:start;width:320px}.wrap>main{grid-column:2;min-width:0}
+@media(max-width:1300px){.wrap{grid-template-columns:320px minmax(0,1fr)}}
+@media(max-width:820px){.wrap{grid-template-columns:1fr}.wrap>.side,.wrap>main{grid-column:auto;width:auto}}
 .side{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;position:sticky;top:70px;max-height:calc(100vh - 90px);overflow:auto}
 @media(max-width:820px){.side{position:static;max-height:320px}}
 .ac{margin-bottom:10px}.ac a{font-weight:900;font-size:13px;cursor:pointer;display:block;margin-bottom:3px}
@@ -107,7 +109,7 @@ const fromRow=(r,i)=>{const dt=r[17]||"",cs=[r.slice(5,10),r.slice(10,15)].filte
 function push(){if(!CFG.url||!ok)return;clearTimeout(tm);setSt("Saving…");
  tm=setTimeout(async()=>{try{await api("replace",{rows:L.filter(l=>l.company).map(toRow)});setSt("Saved to sheet")}catch(x){setSt("Sync error")}},700)}
 async function pull(){if(!CFG.url)return setSt("Local only");setSt("Loading…");
- try{const j=await api("list");L=j.rows.map(fromRow);ok=true;loc();render();setSt("Synced")}catch(x){setSt("Sync error – edits not sent")}}
+ try{const j=await api("list");L=j.rows.map(fromRow);ok=true;loc();render();setSt("Synced · "+L.length+" companies · script "+(j.v||"OLD VERSION")+(j.layout?" · "+j.layout+" layout · last row "+j.lastRow:""))}catch(x){setSt("Sync error – edits not sent")}}
 function logDone(l){if(CFG.url&&ok)api("history",{rows:[[today(),l.company,l.action]]}).catch(()=>setSt("History not saved"))}
 function setAction(l,v){v=v.trim();if(l.action&&v!==l.action)logDone(l);l.action=v}
 const chip=s=>{const x=S.find(a=>a[0]==s)||S[0];return `<span class="chip" style="background:${x[1]};color:${x[2]}">${e(s)}</span>`};
@@ -127,8 +129,8 @@ function render(){
 }
 function side(){
   const v=L.filter(l=>l.company).sort((a,b)=>(!!b.action)-(!!a.action)||a.company.localeCompare(b.company));
-  $("#side").innerHTML=`<div class="lb">Next actions</div>`+(v.length?v.map(l=>`<div class="ac"><a data-o="${l.id}">${e(l.company)}</a><div class="ln"><input data-a="${l.id}" value="${e(l.action)}" placeholder="Add next step…"><button data-d="${l.id}" title="Mark done" ${l.action?"":"hidden"}>✓</button></div></div>`).join(""):'<div class="bd">Add a company to start.</div>');
-  const s=$("#side");
+  $("#side").innerHTML=`<div class="lb">Next actions</div>`+(v.length?v.map(l=>`<div class="ac"><a data-o="${l.id}">${e(l.company)}</a><div class="ln"><textarea data-a="${l.id}" rows="2" placeholder="Add next step…" style="resize:none">${e(l.action)}</textarea><button data-d="${l.id}" title="Mark done" ${l.action?"":"hidden"}>✓</button></div></div>`).join(""):'<div class="bd">Add a company to start.</div>');
+  const s=$("#side");s.querySelectorAll("[data-a]").forEach(i=>i.onkeydown=ev=>{if(ev.key=="Enter"){ev.preventDefault();i.blur()}});
   s.querySelectorAll("[data-o]").forEach(a=>a.onclick=()=>detail(a.dataset.o));
   s.querySelectorAll("[data-a]").forEach(i=>i.onchange=()=>{setAction(L.find(x=>x.id==i.dataset.a),i.value);save();render()});
   s.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{const l=L.find(x=>x.id==b.dataset.d);logDone(l);l.action="";save();render()});
