@@ -50,12 +50,25 @@ label,.lb{display:block;font-size:11px;font-weight:700;text-transform:uppercase;
 .tg{display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);font-weight:400;margin:8px 0}.tg input{width:auto}
 .act{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
 .h{border-top:1px solid var(--bd);padding:9px 0;font-size:13px}.h b{font-size:11px;color:var(--muted);display:block;text-transform:uppercase}.h button{float:right;padding:2px 8px;font-size:11px}
+.tour{position:fixed;inset:0;z-index:500;display:none;pointer-events:none}.tour.open{display:block}
+.tsp{position:fixed;z-index:501;border-radius:12px;box-shadow:0 0 0 9999px rgba(20,20,15,.6);transition:top .3s,left .3s,width .3s,height .3s,opacity .2s;opacity:0;pointer-events:none}
+.ttip{position:fixed;z-index:502;background:var(--card);color:var(--text);border-radius:14px;padding:18px;width:300px;max-width:calc(100vw - 32px);box-shadow:0 12px 40px rgba(0,0,0,.35);pointer-events:auto;transition:top .3s,left .3s}
+.tpr{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}.tti{font-size:16px;font-weight:900;margin-bottom:8px}
+.tbo{font-size:13.5px;color:var(--muted);line-height:1.55;margin-bottom:16px}.tac{display:flex;gap:8px;align-items:center}.tac .sp{flex:1}.tac button{padding:8px 14px;font-size:13px}
+.sn{position:fixed;display:flex;flex-direction:column;min-width:150px;min-height:34px;overflow:hidden;resize:both;border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.28);pointer-events:auto}
+#notes{position:fixed;inset:0;z-index:7;pointer-events:none}
+.nh{display:flex;align-items:center;gap:5px;padding:5px 7px;cursor:grab;touch-action:none;user-select:none;background:rgba(0,0,0,.12)}
+.nh .cd{width:13px;height:13px;border-radius:50%;border:1px solid rgba(0,0,0,.45);padding:0;flex:none;cursor:pointer}
+.nh .pv{flex:1;min-width:0;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nh .nb{border:0;background:transparent;color:inherit;padding:0 6px;font-size:16px;line-height:20px;border-radius:6px}
+.sn textarea{flex:1;border:0;border-radius:0;background:transparent;color:inherit;resize:none;padding:8px 10px;font-size:13px;min-height:0}.sn textarea:focus{outline:none}
+.sn.min{resize:none;height:auto!important;min-height:0}.sn.min textarea,.sn.min .cd{display:none}
 </style>
 </head>
 <body>
-<div class="top"><h1>Followline<small>created by Emilio Miranda</small></h1><div><span class="bd" id="sy" style="align-self:center"></span><button id="cfg" title="Connect Google Sheet">⚙ Connect sheet</button><button id="th" title="Theme">◐</button><button class="pri" id="add">+ New company</button></div></div>
+<div class="top"><h1>Followline<small>created by Emilio Miranda</small></h1><div><span class="bd" id="sy" style="align-self:center"></span><button id="noteBtn">+ Sticky note</button><button id="tourBtn">Guided tour</button><button id="cfg" title="Connect Google Sheet">⚙ Connect sheet</button><button id="th" title="Theme">◐</button><button class="pri" id="add">+ New company</button></div></div>
 <div class="wrap">
-<aside class="side" id="side"><div class="sh" id="sh"><span>Next actions <span id="sc"></span></span><button id="mn" title="Minimize / restore">–</button></div><div class="sb" id="sb"></div></aside>
+<aside class="side" id="side"><div class="sh" id="sh"><span>Current pipeline <span id="sc"></span></span><button id="mn" title="Minimize / restore">–</button></div><div class="sb" id="sb"></div></aside>
 <main>
 <input id="q" placeholder="Search companies, contacts…">
 <div id="pills"></div>
@@ -64,10 +77,12 @@ label,.lb{display:block;font-size:11px;font-weight:700;text-transform:uppercase;
 <div class="bd" style="margin-top:20px">Synced with your Google Sheet when connected; otherwise saved in this browser only.</div>
 </main>
 </div>
+<div id="notes"></div>
+<div class="tour" id="tour"><div class="tsp" id="tsp"></div><div class="ttip" id="ttip"><div class="tpr" id="tpr"></div><div class="tti" id="tti"></div><div class="tbo" id="tbo"></div><div class="tac"><button id="tsk">Skip</button><span class="sp"></span><button id="tbk">Back</button><button class="pri" id="tnx">Next</button></div></div></div>
 <div class="ov" id="ov" hidden></div>
 <script>
 const S=[["Lead enrichment","#e0e7ff","#3730a3"],["Ready for outreach","#cffafe","#155e75"],["Applied","#dbeafe","#1e40af"],["Waiting for response","#fef3c7","#92400e"],["Interview set / Prep","#fce7f3","#9d174d"],["Offer","#dcfce7","#166534"],["Not interested / Rejected","#e5e5e5","#555555"]];
-const SN=S.map(s=>s[0]),CH=["Email","LinkedIn","WhatsApp","Call","In person","Job portal","Other"];
+const SN=S.map(s=>s[0]),CH=["Email","LinkedIn","WhatsApp","Call","Video call","In person","Job portal","Other"];
 const CK=[["linkedin","LinkedIn URL (name fills in)"],["name","Name"],["role","Role / position"],["phone","Phone"],["email","E-mail"]];
 const SK=["name","role","phone","email","linkedin"];
 const $=s=>document.querySelector(s);
@@ -82,15 +97,15 @@ const dues=l=>{const t=last(l),o=[];if(!t)return o;
  if(["Applied","Waiting for response"].includes(l.status))o.push(["Follow-up",addD(t.d,7)]);
  if(l.remind)o.push(["Monthly check-in",addD(t.d,30)]);return o.sort((a,b)=>a[1].localeCompare(b[1]))};
 const isDue=l=>dues(l).some(x=>x[1]<=today());
-const norm=l=>{if(!l.contacts)l.contacts=[l.c1,l.c2].filter(c=>c&&Object.values(c).some(Boolean));delete l.c1;delete l.c2;l.log=l.log||[];l.remind=!!l.remind;return l};
-const blank=()=>({id:Date.now().toString(36),company:"",status:SN[0],action:"",website:"",remind:false,contacts:[],log:[]});
+const norm=l=>{if(!l.contacts)l.contacts=[l.c1,l.c2].filter(c=>c&&Object.values(c).some(Boolean));delete l.c1;delete l.c2;l.log=l.log||[];l.remind=!!l.remind;l.meetings=l.meetings||[];return l};
+const blank=()=>({id:Date.now().toString(36),company:"",status:SN[0],action:"",website:"",remind:false,contacts:[],log:[],meetings:[]});
 const slugName=u=>{try{const m=u.match(/linkedin\.com\/in\/([^/?#]+)/i);if(!m)return"";const p=decodeURIComponent(m[1]).split("-"),z=p[p.length-1];
  if(p.length>1&&/\d/.test(z)&&z.length>=5)p.pop();return p.map(w=>w?w[0].toUpperCase()+w.slice(1):"").join(" ")}catch(x){return""}};
 let L=[],flt="all",CFG={},ok=false,tm;
 try{L=JSON.parse(localStorage.getItem("jt1")||"[]").map(norm)}catch(x){}
 try{CFG=JSON.parse(localStorage.getItem("jt_cfg")||"{}")}catch(x){}
 const loc=()=>{try{localStorage.setItem("jt1",JSON.stringify(L))}catch(x){}};
-const save=()=>{loc();push()};
+const save=()=>{loc();push();pushM()};
 const setSt=t=>{$("#sy").textContent=t};
 const MON="jan feb mar apr may jun jul aug sep oct nov dec".split(" ");
 async function api(action,data){const r=await fetch(CFG.url,{method:"POST",body:JSON.stringify({token:CFG.token,action,data})});const j=await r.json();if(j.error)throw new Error(j.error);return j}
@@ -109,7 +124,7 @@ const fromRow=(r,i)=>{const dt=r[17]||"",cs=[r.slice(5,10),r.slice(10,15)].filte
 function push(){if(!CFG.url||!ok)return;clearTimeout(tm);setSt("Saving…");
  tm=setTimeout(async()=>{try{await api("replace",{rows:L.filter(l=>l.company).map(toRow)});setSt("Saved to sheet")}catch(x){setSt("Sync error")}},700)}
 async function pull(){if(!CFG.url)return setSt("Local only");setSt("Loading…");
- try{const j=await api("list");L=j.rows.map(fromRow);ok=true;loc();render();setSt("Synced · "+L.length+" companies · script "+(j.v||"OLD VERSION")+(j.layout?" · "+j.layout+" layout · last row "+j.lastRow:""))}catch(x){setSt("Sync error – edits not sent")}}
+ try{const j=await api("list");const om={};L.forEach(l=>om[l.company]=l.meetings||[]);L=j.rows.map(fromRow);L.forEach(l=>l.meetings=om[l.company]||[]);ok=true;loc();render();pullNotes();pullMeet();setSt("Synced · "+L.length+" companies · script "+(j.v||"OLD VERSION")+(j.layout?" · "+j.layout+" layout · last row "+j.lastRow:""))}catch(x){setSt("Sync error – edits not sent")}}
 function logDone(l){if(CFG.url&&ok)api("history",{rows:[[today(),l.company,l.action]]}).catch(()=>setSt("History not saved"))}
 function setAction(l,v){v=v.trim();if(l.action&&v!==l.action)logDone(l);l.action=v}
 const chip=s=>{const x=S.find(a=>a[0]==s)||S[0];return `<span class="chip" style="background:${x[1]};color:${x[2]}">${e(s)}</span>`};
@@ -129,11 +144,18 @@ function render(){
 }
 function side(){
   const v=L.filter(l=>l.company).sort((a,b)=>(!!b.action)-(!!a.action)||a.company.localeCompare(b.company));
-  $("#sc").textContent="("+v.filter(l=>l.action).length+")";$("#sb").innerHTML=(v.length?v.map(l=>`<div class="ac"><a data-o="${l.id}">${e(l.company)}</a><div class="ln"><textarea data-a="${l.id}" rows="2" placeholder="Add next step…" style="resize:none">${e(l.action)}</textarea><button data-d="${l.id}" title="Mark done" ${l.action?"":"hidden"}>✓</button></div></div>`).join(""):'<div class="bd">Add a company to start.</div>');
-  const s=$("#sb");s.querySelectorAll("[data-a]").forEach(i=>i.onkeydown=ev=>{if(ev.key=="Enter"){ev.preventDefault();i.blur()}});
+  const it=[];L.forEach(l=>l.meetings.forEach(m=>m.items.forEach(i=>{if(!i.done)it.push({l,m,i})})));it.sort((a,b)=>b.m.d.localeCompare(a.m.d));
+  $("#sc").textContent="("+(v.filter(l=>l.action).length+it.length)+")";
+  const ta=(a,val,btn,ph)=>`<div class="ln"><textarea ${a} rows="2" placeholder="${ph}" style="resize:none">${e(val)}</textarea><button ${btn} title="Mark done" ${val?"":"hidden"}>✓</button></div>`;
+  $("#sb").innerHTML=`<div class="lb">Next actions</div>`+(v.length?v.map(l=>`<div class="ac"><a data-o="${l.id}">${e(l.company)}</a>${ta(`data-a="${l.id}"`,l.action,`data-d="${l.id}"`,"Add next step…")}</div>`).join(""):'<div class="bd">Add a company to start.</div>')+
+   `<div class="lb" style="margin:14px 0 8px">Action items</div>`+(it.length?it.map(({l,m,i})=>`<div class="ac"><a data-o="${l.id}">${e(l.company)}</a> <span class="bd">· meeting ${e(fd(m.d))}</span>${ta(`data-i="${i.k}"`,i.t,`data-di="${i.k}"`,"")}</div>`).join(""):'<div class="bd">No open action items. Add them when you log meeting notes.</div>');
+  const s=$("#sb");
+  s.querySelectorAll("textarea").forEach(i=>i.onkeydown=ev=>{if(ev.key=="Enter"){ev.preventDefault();i.blur()}});
   s.querySelectorAll("[data-o]").forEach(a=>a.onclick=()=>detail(a.dataset.o));
   s.querySelectorAll("[data-a]").forEach(i=>i.onchange=()=>{setAction(L.find(x=>x.id==i.dataset.a),i.value);save();render()});
   s.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{const l=L.find(x=>x.id==b.dataset.d);logDone(l);l.action="";save();render()});
+  s.querySelectorAll("[data-i]").forEach(i=>i.onchange=()=>{const f=fi(i.dataset.i);if(!f)return;const t=i.value.trim();if(t)f.i.t=t;else f.m.items=f.m.items.filter(x=>x!==f.i);save();render()});
+  s.querySelectorAll("[data-di]").forEach(b=>b.onclick=()=>{const f=fi(b.dataset.di);if(!f)return;f.i.done=true;logHist(f.l,f.m,f.i);save();render()});
 }
 const open=h=>{$("#ov").innerHTML=`<div class="modal">${h}</div>`;$("#ov").hidden=false};
 const close=()=>{$("#ov").hidden=true;render()};
@@ -151,7 +173,8 @@ function detail(id){
   <div class="g">${l.contacts.map((c,i)=>cb(i,c)).join("")}</div>
   <button id="ac" style="margin-top:8px">+ Add contact</button>
   <div class="act" style="justify-content:stretch"><button class="pri" style="flex:1" id="lg">+ Log touchpoint</button><button id="dl" style="color:var(--muted)">Delete</button></div>
-  <div style="margin-top:16px"><div class="lb">History (${l.log.length})</div>${l.log.length?l.log.slice().sort((a,b)=>b.d.localeCompare(a.d)).map(t=>`<div class="h"><button data-x="${t.k}">Delete</button><b>${e(fd(t.d))} · ${e(t.ch)}</b>${e(t.msg)}</div>`).join(""):'<div class="bd">No history yet.</div>'}</div>
+  <div id="mtg" style="margin-top:16px"><div class="lb">Meeting notes (${l.meetings.length})</div>${l.meetings.length?l.meetings.slice().sort((a,b)=>b.d.localeCompare(a.d)).map(m=>`<div class="h" style="white-space:pre-wrap"><button data-dm="${m.k}">Delete</button><b>${e(fd(m.d))} · Video call</b>${e(m.summary)||"(no summary)"}${m.items.length?`<div style="margin-top:6px">${m.items.map(i=>`<label class="tg" style="margin:2px 0"><input type="checkbox" data-ck="${i.k}" ${i.done?"checked":""}><span style="${i.done?"text-decoration:line-through;color:var(--muted)":""}">${e(i.t)}</span></label>`).join("")}</div>`:""}</div>`).join(""):'<div class="bd">No meeting notes yet. Use “+ Log touchpoint” → Meeting notes.</div>'}</div>
+  <div id="hist" style="margin-top:16px"><div class="lb">History (${l.log.length})</div>${l.log.length?l.log.slice().sort((a,b)=>b.d.localeCompare(a.d)).map(t=>`<div class="h"><button data-x="${t.k}">Delete</button><b>${e(fd(t.d))} · ${e(t.ch)}</b>${e(t.msg)}</div>`).join(""):'<div class="bd">No history yet.</div>'}</div>
   <div class="act"><button id="cl">Close</button></div>`);
   const m=$(".modal");
   m.querySelectorAll("[data-p]").forEach(i=>i.onchange=()=>{const p=i.dataset.p.split(".");
@@ -165,13 +188,24 @@ function detail(id){
   m.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{if(confirm("Remove this contact?")){l.contacts.splice(+b.dataset.r,1);save();detail(id)}});
   m.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>{const u=l[b.dataset.o];if(u)window.open(/^https?:/.test(u)?u:"https://"+u,"_blank","noopener")});
   m.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{if(confirm("Delete this touchpoint?")){l.log=l.log.filter(t=>t.k!=b.dataset.x);save();detail(id)}});
-  $("#lg").onclick=()=>logf(id);$("#cl").onclick=close;
+  $("#lg").onclick=()=>logf(id);
+  m.querySelectorAll("[data-ck]").forEach(c=>c.onchange=()=>{const f=fi(c.dataset.ck);if(!f)return;f.i.done=c.checked;if(c.checked)logHist(f.l,f.m,f.i);save();detail(id)});
+  m.querySelectorAll("[data-dm]").forEach(b=>b.onclick=()=>{if(confirm("Delete these meeting notes?")){l.meetings=l.meetings.filter(x=>x.k!=b.dataset.dm);save();detail(id)}});$("#cl").onclick=close;
   $("#dl").onclick=()=>{if(confirm("Delete this company?")){L=L.filter(x=>x.id!=id);save();close()}};
 }
-function logf(id){
-  open(`<h2>Log touchpoint</h2><div class="fld"><label>Date</label><input type="date" id="td" value="${today()}"></div><div class="fld"><label>Channel</label>${sel("tc",CH,CH[0])}</div><div class="fld"><label>Message</label><textarea id="tm" rows="4" placeholder="What was discussed…"></textarea></div><div class="act"><button id="cn">Cancel</button><button class="pri" id="sv">Save</button></div>`);
+function logf(id,mode){mode=mode||"t";
+  const tabs=`<div style="display:flex;gap:6px;margin-bottom:12px"><button class="pill ${mode=="t"?"on":""}" data-md="t">Touchpoint</button><button class="pill ${mode=="m"?"on":""}" data-md="m">Meeting notes</button></div>`;
+  open(tabs+(mode=="t"?`<h2>Log touchpoint</h2><div class="fld"><label>Date</label><input type="date" id="td" value="${today()}"></div><div class="fld"><label>Channel</label>${sel("tc",CH,CH[0])}</div><div class="fld"><label>Message</label><textarea id="tm" rows="4" placeholder="What was discussed…"></textarea></div>`
+   :`<h2>Meeting notes</h2><div class="fld"><label>Date of the video call</label><input type="date" id="td" value="${today()}"></div><div class="fld"><label>Summary of what was discussed</label><textarea id="tm" rows="6" placeholder="Key points, decisions, context…"></textarea></div><div class="lb">Action items</div><div id="ail"><input class="ai" placeholder="Action item…" style="margin-bottom:6px"></div><button id="aa">+ Add action item</button>`)
+   +`<div class="act"><button id="cn">Cancel</button><button class="pri" id="sv">Save</button></div>`);
+  $("#ov").querySelectorAll("[data-md]").forEach(b=>b.onclick=()=>logf(id,b.dataset.md));
+  if(mode=="m")$("#aa").onclick=()=>{const i=document.createElement("input");i.className="ai";i.placeholder="Action item…";i.style.marginBottom="6px";$("#ail").appendChild(i);i.focus()};
   $("#cn").onclick=()=>detail(id);
-  $("#sv").onclick=()=>{if(!$("#td").value)return alert("Enter a date");const l=L.find(x=>x.id==id);l.log.push({k:Date.now().toString(36),d:$("#td").value,ch:$("#tc").value,msg:$("#tm").value.trim()});save();detail(id)};
+  $("#sv").onclick=()=>{if(!$("#td").value)return alert("Enter a date");const l=L.find(x=>x.id==id),d=$("#td").value,tx=$("#tm").value.trim(),k=Date.now().toString(36);
+   if(mode=="t")l.log.push({k,d,ch:$("#tc").value,msg:tx});
+   else{const items=[...document.querySelectorAll(".ai")].map(x=>x.value.trim()).filter(Boolean).map((t,n)=>({k:"i"+k+n,t,done:false}));
+    l.meetings.push({k:"m"+k,d,summary:tx,items});l.log.push({k,d,ch:"Video call",msg:"Meeting: "+tx.slice(0,120)+(tx.length>120?"…":"")})}
+   save();detail(id)};
 }
 function form(){
   open(`<h2>New company</h2><div class="fld"><label>Company</label><input id="f_c"></div>
@@ -190,6 +224,74 @@ $("#cfg").onclick=()=>{const u=prompt("Apps Script web app URL",CFG.url||"");if(
  CFG={url:u.trim(),token:t.trim()};try{localStorage.setItem("jt_cfg",JSON.stringify(CFG))}catch(x){}pull()};
 $("#q").oninput=render;$("#hide").onchange=render;
 $("#th").onclick=()=>{const r=document.documentElement,d=getComputedStyle(r).colorScheme.includes("dark");r.dataset.theme=d?"light":"dark"};
+let mOk=false,mT;
+const fi=k=>{for(const l of L)for(const m of l.meetings)for(const i of m.items)if(i.k==k)return{l,m,i}};
+const logHist=(l,m,i)=>{if(CFG.url&&ok)api("history",{rows:[[today(),l.company,"[Meeting "+m.d+"] "+i.t]]}).catch(()=>setSt("History not saved"))};
+const mRows=()=>L.flatMap(l=>l.meetings.map(m=>[l.company,m.d,m.summary,m.items.map(i=>(i.done?"[x] ":"[ ] ")+i.t.replace(/\n/g," ")).join("\n"),m.k]));
+const mFrom=r=>({k:r[4]||"m"+Math.random().toString(36).slice(2,8),d:r[1],summary:r[2],items:(r[3]||"").split("\n").filter(x=>x.trim()).map((x,n)=>({k:"i"+n+Math.random().toString(36).slice(2,7),done:/^\[x\]/i.test(x),t:x.replace(/^\[[ xX]\]\s?/,"")}))});
+function pushM(){if(!CFG.url||!mOk)return;clearTimeout(mT);mT=setTimeout(()=>api("meetings_save",{rows:mRows()}).catch(()=>setSt("Meetings not saved")),700)}
+async function pullMeet(){if(!CFG.url)return;try{const j=await api("meetings_list");
+ if(j.rows.length){L.forEach(l=>l.meetings=[]);j.rows.forEach(r=>{const l=L.find(x=>x.company.toLowerCase()==String(r[0]).toLowerCase());if(l)l.meetings.push(mFrom(r))})}
+ mOk=true;loc();render();if(!j.rows.length&&L.some(l=>l.meetings.length))pushM()}catch(x){}}
+const NC=[["Yellow", "#fff3a3", "#3b3200"], ["Pink", "#ffc9de", "#4a1530"], ["Blue", "#bfe3ff", "#0f2e4a"], ["Green", "#c8f0c0", "#17401a"], ["Grey", "#e0e0e0", "#222222"]];
+let N=[],nOk=false,nt,zc=10;
+try{N=JSON.parse(localStorage.getItem("jt_notes")||"[]")}catch(x){}
+const locN=()=>{try{localStorage.setItem("jt_notes",JSON.stringify(N))}catch(x){}};
+const nRow=n=>[n.id,n.text,NC[n.c][0],Math.round(n.x),Math.round(n.y),Math.round(n.w),Math.round(n.h),n.min?"Yes":"",today()];
+const nFrom=r=>{const c=NC.findIndex(x=>x[0]==r[2]);return{id:r[0],text:r[1],c:c<0?0:c,x:+r[3]||60,y:+r[4]||110,w:+r[5]||220,h:+r[6]||170,min:/^y/i.test(r[7])}};
+function saveN(){locN();if(!CFG.url||!nOk)return;clearTimeout(nt);nt=setTimeout(()=>api("notes_save",{rows:N.map(nRow)}).catch(()=>setSt("Notes not saved")),700)}
+async function pullNotes(){if(!CFG.url)return;try{const j=await api("notes_list");if(j.rows.length)N=j.rows.map(nFrom);nOk=true;locN();renderNotes();if(!j.rows.length&&N.length)saveN()}catch(x){}}
+function renderNotes(){const box=$("#notes");box.innerHTML="";N.forEach(n=>{
+ const c=NC[n.c],d=document.createElement("div");d.className="sn"+(n.min?" min":"");d.dataset.id=n.id;
+ d.style.cssText=`left:${Math.min(Math.max(0,n.x),innerWidth-100)}px;top:${Math.min(Math.max(60,n.y),innerHeight-40)}px;width:${n.w}px;height:${n.h}px;background:${c[1]};color:${c[2]};z-index:${++zc}`;
+ d.innerHTML=`<div class="nh">${NC.map((k,i)=>`<button class="cd" data-c="${i}" style="background:${k[1]}" title="${k[0]}"></button>`).join("")}<span class="pv">${n.min?e((n.text||"Note").slice(0,24)):""}</span><button class="nb" data-m title="Minimize / restore">${n.min?"+":"–"}</button><button class="nb" data-x title="Delete">×</button></div><textarea placeholder="Write something…">${e(n.text)}</textarea>`;
+ d.querySelector("textarea").oninput=ev=>{n.text=ev.target.value;saveN()};
+ d.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>{n.c=+b.dataset.c;saveN();renderNotes()});
+ d.querySelector("[data-m]").onclick=()=>{n.min=!n.min;saveN();renderNotes()};
+ d.querySelector("[data-x]").onclick=()=>{if(!n.text||confirm("Delete this note?")){N=N.filter(x=>x!==n);saveN();renderNotes()}};
+ const h=d.querySelector(".nh");let dr=null;
+ h.onpointerdown=ev=>{if(ev.target.closest("button"))return;d.style.zIndex=++zc;dr={x:ev.clientX-d.offsetLeft,y:ev.clientY-d.offsetTop};h.setPointerCapture(ev.pointerId);h.style.cursor="grabbing"};
+ h.onpointermove=ev=>{if(!dr)return;n.x=Math.min(Math.max(0,ev.clientX-dr.x),innerWidth-100);n.y=Math.min(Math.max(60,ev.clientY-dr.y),innerHeight-40);d.style.left=n.x+"px";d.style.top=n.y+"px"};
+ h.onpointerup=()=>{if(dr){dr=null;h.style.cursor="";saveN()}};
+ box.appendChild(d)})}
+addEventListener("pointerup",()=>{let ch=0;document.querySelectorAll("#notes .sn:not(.min)").forEach(d=>{const n=N.find(x=>x.id==d.dataset.id);if(n&&(Math.abs(n.w-d.offsetWidth)>1||Math.abs(n.h-d.offsetHeight)>1)){n.w=d.offsetWidth;n.h=d.offsetHeight;ch=1}});if(ch)saveN()});
+$("#noteBtn").onclick=()=>{const k=N.length;N.push({id:"n"+Date.now().toString(36),text:"",c:k%NC.length,x:60+k*28,y:110+k*28,w:220,h:170,min:false});saveN();renderNotes();const t=$("#notes").lastChild.querySelector("textarea");if(t)t.focus()};
+renderNotes();
+const TS=[{"t": "Welcome to Followline", "b": "A quick walkthrough of every part of the app and what it is for. Click “Skip” anytime to exit."},
+{"t": "Connect sheet", "b": "Paste your Apps Script URL and token here to sync with your Google Sheet. You only need to do this once per browser.", "s": "#cfg"},
+{"t": "Current pipeline window", "b": "Your pipeline at a glance: the next step for every company, plus the open action items from your meeting notes. Drag the title bar to move it, use – to minimize it and drag its corner to resize. Edit an item right here, or press ✓ when it is done: it is saved to the “Actions history” tab of your sheet.", "s": "#side"},
+{"t": "Search", "b": "Filters by name, action or contact.", "s": "#q"},
+{"t": "New company", "b": "Adds a new company to your list. You can add contacts, notes and touchpoints once it is created.", "s": "#add"},
+{"t": "Sticky notes", "b": "Adds a sticky note you can drag anywhere on the screen. Pick its color with the dots, minimize it with – and resize it from the corner. Notes are saved to the “Sticky notes” tab of your sheet.", "s": "#noteBtn"},
+{"t": "Status filters", "b": "One colored pill per status in use, with a count. Click one to filter, “All” to clear it. The ⏰ Due pill shows everything whose follow-up is due.", "s": "#pills"},
+{"t": "Hide inactive", "b": "Hides entries with 60+ days since their last touchpoint. It is only a view filter, nothing gets deleted.", "s": ".chk"},
+{"t": "The list", "b": "Rank, name + status, and the most recent touchpoint. The border and day chip show how urgent a follow-up is: the darker, the longer it has been. The ↻ / ⏰ badge shows the follow-up date, 7 days after the last touchpoint while the status is Applied or Waiting for response. The 💬 badge counts your touchpoints.", "s": "#list"},
+{"t": "Opening an entry", "b": "Click any row to open its detail. Let’s open one now.","before":()=>{const r=document.querySelector("#list .row");if(r)r.click()}},
+{"t": "Status", "b": "Pick a new status and it saves immediately.", "s": "#st", "n": 1},
+{"t": "Action & reminders", "b": "Edit the next step here: changing it saves the old one to your history. Turn on the monthly reminder to get a check-in badge one month after the last touchpoint.", "s": "[data-p=\"action\"]", "n": 1},
+{"t": "Contacts", "b": "Add as many contacts as you need. Paste a LinkedIn URL and the name fills in from the link; type the role yourself.", "s": "#ac", "n": 1},
+{"t": "Log touchpoint", "b": "Saves a touchpoint (date, channel, message) or meeting notes (date of the call, a summary and action items). Either one restarts the follow-up clock.", "s": "#lg", "n": 1},
+{"t": "Meeting notes", "b": "Meeting notes you add with “+ Log touchpoint → Meeting notes” appear here: the date of the call, your summary and its action items. Check an item when it is done.", "s": "#mtg", "n": 1},
+{"t": "History", "b": "Every touchpoint is listed here, newest first. Each one has its own Delete in case you logged something by mistake.", "s": "#hist", "n": 1}];
+let tI=0;
+const tUse=s=>!(s.n&&$("#ov").hidden)&&!(s.s&&!document.querySelector(s.s));
+function tEnd(){$("#tour").classList.remove("open");$("#tsp").style.opacity=0;if(!$("#ov").hidden)close()}
+function tShow(){
+ while(tI<TS.length){const s=TS[tI];if(!s.n&&!s.before&&!$("#ov").hidden)close();if(s.before)s.before();if(tUse(s))break;tI++}
+ if(tI>=TS.length)return tEnd();
+ const s=TS[tI],sp=$("#tsp"),tp=$("#ttip");
+ $("#tour").classList.add("open");
+ $("#tpr").textContent=(tI+1)+" / "+TS.length;$("#tti").textContent=s.t;$("#tbo").textContent=s.b;
+ $("#tbk").style.visibility=tI?"visible":"hidden";$("#tnx").textContent=tI==TS.length-1?"Done":"Next";
+ if(!s.s){Object.assign(sp.style,{opacity:1,top:"50%",left:"50%",width:"0px",height:"0px"});Object.assign(tp.style,{top:"50%",left:"50%",transform:"translate(-50%,-50%)"});return}
+ const el=document.querySelector(s.s);el.scrollIntoView({block:"center",behavior:"smooth"});
+ setTimeout(()=>{const r=el.getBoundingClientRect(),p=8,below=innerHeight-r.bottom;
+  Object.assign(sp.style,{opacity:1,top:r.top-p+"px",left:r.left-p+"px",width:r.width+p*2+"px",height:r.height+p*2+"px"});
+  Object.assign(tp.style,{transform:"none",top:(below>240?r.bottom+16:Math.max(16,r.top-230))+"px",left:Math.min(Math.max(16,r.left),innerWidth-316)+"px"})},280)}
+$("#tsk").onclick=tEnd;
+$("#tbk").onclick=()=>{tI--;while(tI>0&&!tUse(TS[tI]))tI--;tShow()};
+$("#tnx").onclick=()=>{tI++;tShow()};
+$("#tourBtn").onclick=()=>{if(!$("#ov").hidden)close();tI=0;tShow()};
 const W=$("#side"),WH=$("#sh");let pos={x:20,y:90,min:false},dr=null;
 try{Object.assign(pos,JSON.parse(localStorage.getItem("jt_win")||"{}"))}catch(x){}
 const place=()=>{const mob=innerWidth<=820;W.style.left=mob?"":Math.min(Math.max(0,pos.x),innerWidth-120)+"px";W.style.top=mob?"":Math.min(Math.max(60,pos.y),innerHeight-50)+"px";W.classList.toggle("min",pos.min);$("#mn").textContent=pos.min?"+":"–"};
